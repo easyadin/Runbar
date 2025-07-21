@@ -125,21 +125,23 @@ export class TrayMenu {
                 }
                 // After all services are handled, open the group logs window
                 const { BrowserWindow, ipcMain } = require('electron');
-                let logHtml = `<html><body style='background:#181A1B;margin:0;padding:0;'><div style='font-family:monospace;background:#23272E;color:#D1D5DB;margin:0;padding:0;min-height:100vh;'><h2 style='margin:0 0 10px 0;padding:18px 18px 0 18px;font-size:1.3em;font-weight:600;letter-spacing:1px;'>Logs for Group: ${group.name}</h2>`;
-                // Tab headers
-                logHtml += `<div id='tabs' style='margin:0 0 10px 18px;'>`;
+                let logHtml = `<html><body style='background:#181A1B;margin:0;padding:0;overflow:hidden;'><div style='font-family:monospace;background:#23272E;color:#D1D5DB;margin:0;padding:0;height:100vh;overflow:hidden;'><h2 style='margin:0 0 10px 0;padding:18px 18px 0 18px;font-size:1.3em;font-weight:600;letter-spacing:1px;'>Logs for Group: ${group.name}</h2>`;
+                logHtml += `<div style='display:flex;flex-direction:row;height:calc(100vh - 56px);'>`;
+                // Tabs (vertical, right)
+                logHtml += `<div id='tabs' style='display:flex;flex-direction:column;align-items:stretch;min-width:180px;background:#23272E;padding:18px 0 18px 0;height:100%;'>`;
                 groupServices.forEach((service, i) => {
-                  logHtml += `<button onclick='showTab(${i})' id='tabbtn${i}' style='margin-right:5px;background:#23272E;color:#D1D5DB;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-size:1em;'>${service.name}</button>`;
+                  logHtml += `<button onclick='showTab(${i})' id='tabbtn${i}' style='margin:0 0 8px 0;background:#23272E;color:#D1D5DB;border:none;padding:12px 10px;cursor:pointer;font-size:1em;text-align:left;height:auto;'>${service.name}</button>`;
                 });
                 logHtml += `</div>`;
-                // Tab contents
+                // Log areas (left)
+                logHtml += `<div style='flex:1;background:#181A1B;padding:0 0 0 0;height:100%;min-height:0;'>`;
                 groupServices.forEach((service, i) => {
                   const logs = this.processManager.getServiceLogs(service.path);
-                  logHtml += `<div id='tab${i}' style='display:${i === 0 ? 'block' : 'none'};'>`;
-                  logHtml += `<pre id='logpre${i}' style='white-space:pre-wrap;word-break:break-all;background:#181A1B;padding:18px 18px 18px 18px;height:60vh;overflow:auto;border-radius:10px;box-shadow:0 2px 16px #0008;font-size:1.1em;line-height:1.5;'>${(logs && logs.length > 0 ? logs.join('\n') : 'No logs available.').replace(/</g, '&lt;')}</pre>`;
+                  logHtml += `<div id='tab${i}' style='display:${i === 0 ? 'block' : 'none'};height:100%;'>`;
+                  logHtml += `<pre id='logpre${i}' style='white-space:pre-wrap;word-break:break-all;background:#181A1B;padding:18px 18px 64px 18px;height:100%;overflow:auto;font-size:1.1em;line-height:1.5;margin:0;box-sizing:border-box;'>${(logs && logs.length > 0 ? logs.join('\n') : 'No logs available.').replace(/</g, '&lt;')}</pre>`;
                   logHtml += `</div>`;
                 });
-                logHtml += `<button style='margin:18px;background:#23272E;color:#D1D5DB;border:none;padding:8px 18px;border-radius:6px;cursor:pointer;font-size:1em;box-shadow:0 1px 4px #0004;' onclick='navigator.clipboard.writeText(document.body.innerText)'>Copy All</button>`;
+                logHtml += `</div></div>`;
                 logHtml += `<script>
                   const { ipcRenderer } = require('electron');
                   function showTab(idx) {
@@ -199,10 +201,9 @@ export class TrayMenu {
                 groupServices.forEach((service, i) => {
                   const logs = this.processManager.getServiceLogs(service.path);
                   logHtml += `<div id='tab${i}' style='display:${i === 0 ? 'block' : 'none'};'>`;
-                  logHtml += `<pre id='logpre${i}' style='white-space:pre-wrap;word-break:break-all;background:#111;padding:10px;height:60vh;overflow:auto;border-radius:6px;'>${(logs && logs.length > 0 ? logs.join('\n') : 'No logs available.').replace(/</g, '&lt;')}</pre>`;
+                  logHtml += `<pre id='logpre${i}' style='white-space:pre-wrap;word-break:break-all;background:#111;padding:10px;height:100%;overflow:auto;border-radius:6px;'>${(logs && logs.length > 0 ? logs.join('\n') : 'No logs available.').replace(/</g, '&lt;')}</pre>`;
                   logHtml += `</div>`;
                 });
-                logHtml += `<button onclick='navigator.clipboard.writeText(document.body.innerText)'>Copy All</button>`;
                 logHtml += `<script>
                   const { ipcRenderer } = require('electron');
                   function showTab(idx) {
@@ -271,7 +272,6 @@ export class TrayMenu {
                         <html><body style='font-family:monospace;background:#222;color:#eee;margin:0;padding:0;'>
                         <h2 style='margin:10px;'>Logs for ${service.name}</h2>
                         <pre style='white-space:pre-wrap;word-break:break-all;background:#111;padding:10px;height:80vh;overflow:auto;border-radius:6px;'>${(logs && logs.length > 0 ? logs.join('\n') : 'No logs available.').replace(/</g, '&lt;')}</pre>
-                        <button onclick='navigator.clipboard.writeText(document.querySelector("pre").innerText)'>Copy All</button>
                         </body></html>
                       `;
                       logWin.loadURL('data:text/html,' + encodeURIComponent(logHtml));
@@ -387,28 +387,32 @@ export class TrayMenu {
         { type: 'separator' },
         ...groupItems,
         { type: 'separator' },
-        { label: 'Edit Raw Config', click: () => {
-          const { shell } = require('electron');
-          const os = require('os');
-          const path = require('path');
-          const configDir = path.join(os.homedir(), '.runbar');
-          shell.openPath(configDir);
-        } },
-        { label: 'Refresh', click: () => this.updateMenu() },
-        { label: 'Clear All Services', click: async () => {
-          const result = await dialog.showMessageBox({
-            type: 'warning',
-            buttons: ['Cancel', 'Clear All'],
-            defaultId: 0,
-            cancelId: 0,
-            title: 'Clear All Services',
-            message: 'Are you sure you want to remove all services? This cannot be undone.'
-          });
-          if (result.response === 1) {
-            await this.storage.clearServices();
-            await this.updateMenu();
+        {
+          label: 'Edit Raw Config', click: () => {
+            const { shell } = require('electron');
+            const os = require('os');
+            const path = require('path');
+            const configDir = path.join(os.homedir(), '.runbar');
+            shell.openPath(configDir);
           }
-        } },
+        },
+        { label: 'Refresh', click: () => this.updateMenu() },
+        {
+          label: 'Clear All Services', click: async () => {
+            const result = await dialog.showMessageBox({
+              type: 'warning',
+              buttons: ['Cancel', 'Clear All'],
+              defaultId: 0,
+              cancelId: 0,
+              title: 'Clear All Services',
+              message: 'Are you sure you want to remove all services? This cannot be undone.'
+            });
+            if (result.response === 1) {
+              await this.storage.clearServices();
+              await this.updateMenu();
+            }
+          }
+        },
         { label: 'Add Folder to Scan...', click: () => this.addFolder() },
         { label: 'Add Service Manually...', click: () => this.addService() },
         { type: 'separator' },

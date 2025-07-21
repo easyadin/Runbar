@@ -1,6 +1,5 @@
 import { Service, ServiceStatus, ProcessInfo, ProcessManagerOptions } from './types';
 import { spawn, ChildProcess } from 'child_process';
-import detectPort from 'detect-port';
 const { webContents, dialog } = require('electron');
 
 interface ManagedProcess {
@@ -19,6 +18,17 @@ export class ProcessManager {
       gracefulShutdownTimeout: 5000,
       ...options
     };
+    // Add periodic status polling
+    setInterval(() => {
+      for (const [_, managed] of this.processes.entries()) {
+        if (managed.process && managed.info.status === 'running') {
+          if (managed.process.exitCode !== null) {
+            managed.info.status = 'stopped';
+            managed.info.exitCode = managed.process.exitCode;
+          }
+        }
+      }
+    }, this._options.statusPollingInterval);
   }
 
   async startService(service: Service): Promise<boolean> {
@@ -27,68 +37,7 @@ export class ProcessManager {
         console.log(`Service already running: ${service.name}`);
         return false;
       }
-      let port: number | null = null;
-      const cmdStr = typeof service.command === 'string' ? service.command : '';
-      const portMatch = (cmdStr as string).match(/--port[= ](\d+)/) || (cmdStr as string).match(/PORT=(\d+)/);
-      if (portMatch && portMatch[1]) {
-        port = parseInt(portMatch[1], 10);
-      }
-      let processInfo: { pid: string, command: string } | null = null;
-      if (port) {
-        const available = await detectPort(port);
-        if (available !== port) {
-          try {
-            const { execSync } = require('child_process');
-            const lsofOut = execSync(`lsof -i :${port} -sTCP:LISTEN -Pn | awk 'NR>1 {print $2, $1}'`).toString().trim();
-            if (lsofOut) {
-              const [pid, command] = lsofOut.split(' ');
-              processInfo = { pid, command };
-            }
-          } catch (e) { /* ignore */ }
-          let dialogOpts: any = {
-            type: 'warning',
-            buttons: ['Cancel', 'Start Anyway'],
-            defaultId: 0,
-            cancelId: 0,
-            title: 'Port In Use',
-            message: `Port ${port} is already in use. The service may already be running.`
-          };
-          if (processInfo) {
-            dialogOpts.message += `\nProcess: PID ${processInfo.pid}, Command: ${processInfo.command}`;
-            dialogOpts.buttons = ['Cancel', 'Mark as Running', 'Start Anyway', 'Kill Process'];
-          }
-          const result = await dialog.showMessageBox(dialogOpts);
-          if (processInfo) {
-            if (result.response === 1) { // Mark as Running
-              // Mark as running in Runbar (but unforunately no logs)
-              this.processes.set(service.path, {
-                process: null,
-                info: {
-                  pid: parseInt(processInfo.pid, 10),
-                  status: 'running',
-                  startTime: new Date(),
-                  logs: [`Adopted running process PID ${processInfo.pid}`]
-                }
-              });
-              return true;
-            } else if (result.response === 3) { // Kill Process
-              try {
-                process.kill(parseInt(processInfo.pid, 10));
-                return false;
-              } catch (e) {
-                console.error('Failed to kill process:', e);
-                return false;
-              }
-            } else if (result.response !== 2) {
-              return false;
-            }
-          } else {
-            if (result.response !== 1) {
-              return false;
-            }
-          }
-        }
-      }
+      // No up-front port detection or prompt. Always attempt to start the service.
       console.log(`Starting service: ${service.name} with log limit: ${this._options.logStorageLimit}`);
       const command = typeof service.command === 'string' ? service.command : '';
       if (!command.trim()) {
@@ -110,6 +59,73 @@ export class ProcessManager {
         // Send log update to all renderer windows
         for (const wc of webContents.getAllWebContents()) {
           wc.send('log-update', { path: service.path, line });
+        }
+        // Log monitoring for port-in-use errors
+        if (/EADDRINUSE|address already in use/i.test(line)) {
+          // Only match explicit port-in-use error patterns
+          const portMatch =
+            line.match(/EADDRINUSE.*(?:port |:)(\d{2,5})/i) ||
+            line.match(/address already in use.*(?:port |:)(\d{2,5})/i) ||
+            line.match(/listen EADDRINUSE.*:(\d{2,5})/i) ||
+            line.match(/port (\d{2,5}) is already in use/i);
+          const port = portMatch && portMatch[1] ? parseInt(portMatch[1], 10) : null;
+          (async () => {
+            let processInfo: { pid: string, command: string } | null = null;
+            if (port) {
+              try {
+                const { execSync } = require('child_process');
+                const lsofOut = execSync(`lsof -i :${port} -sTCP:LISTEN -Pn | awk 'NR>1 {print $2, $1}'`).toString().trim();
+                if (lsofOut) {
+                  const [pid, command] = lsofOut.split(' ');
+                  processInfo = { pid, command };
+                }
+              } catch (e) { /* ignore */ }
+            }
+            let dialogOpts: any;
+            if (port) {
+              dialogOpts = {
+                type: 'error',
+                buttons: ['Ignore', 'Mark as Running', 'Kill Process and Start'],
+                defaultId: 0,
+                cancelId: 0,
+                title: 'Port In Use Error',
+                message: `Service '${service.name}' failed to start: Port ${port} is already in use.`
+              };
+              if (processInfo) {
+                dialogOpts.message += `\nProcess: PID ${processInfo.pid}, Command: ${processInfo.command}`;
+              }
+            } else {
+              dialogOpts = {
+                type: 'error',
+                buttons: ['Ignore', 'Mark as Running'],
+                defaultId: 0,
+                cancelId: 0,
+                title: 'Port In Use Error',
+                message: `Service '${service.name}' failed to start due to a port conflict, but the port could not be determined from the error message. Please check your logs or configuration.`
+              };
+            }
+            const result = await dialog.showMessageBox(dialogOpts);
+            if (result.response === 1) { // Mark as Running
+              this.processes.set(service.path, {
+                process: null,
+                info: {
+                  pid: processInfo ? parseInt(processInfo.pid, 10) : -1,
+                  status: 'running',
+                  startTime: new Date(),
+                  logs: [...logs, `Adopted running process PID ${processInfo ? processInfo.pid : '?'}${port ? ' on port ' + port : ''}`]
+                }
+              });
+            } else if (result.response === 2 && processInfo && port) { // Kill Process and Start
+              try {
+                process.kill(parseInt(processInfo.pid, 10));
+                logs.push(`Killed process PID ${processInfo.pid} on port ${port}`);
+                // After killing, try to start again
+                await this.startService(service);
+              } catch (e) {
+                logs.push(`Failed to kill process PID ${processInfo.pid}: ${e}`);
+              }
+            }
+          })();
         }
       };
       child.stdout?.on('data', (data: Buffer) => {

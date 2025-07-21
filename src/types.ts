@@ -2,6 +2,7 @@ export interface Service {
   name: string;
   path: string;
   command: string;
+  port?: number;
   autoStart?: boolean;
   projectType?: ProjectType;
   status?: ServiceStatus;
