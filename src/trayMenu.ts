@@ -1,4 +1,4 @@
-import { Tray, Menu, dialog, app } from 'electron';
+import { Tray, Menu, app } from 'electron';
 import { ProcessManager } from './processManager';
 import { Storage } from './storage';
 
@@ -58,8 +58,10 @@ export class TrayMenu {
                 const editWin = new BrowserWindow({
                   width: 400,
                   height: 350,
-                  modal: true,
+                  modal: false,
                   show: false,
+                  alwaysOnTop: true,
+                  focusable: true,
                   webPreferences: { nodeIntegration: true, contextIsolation: false }
                 });
                 const scriptOptions = scripts.length > 0 ? `<label>Scripts:<br><select id='script'>${scripts.map(s => `<option value='${s}'>${s}</option>`)}</select></label><br><br>` : '';
@@ -93,7 +95,10 @@ export class TrayMenu {
                   </body></html>
                 `;
                 editWin.loadURL('data:text/html,' + encodeURIComponent(html));
-                editWin.once('ready-to-show', () => editWin.show());
+                editWin.once('ready-to-show', () => {
+                  editWin.show();
+                  editWin.focus();
+                });
                 ipcMain.once('edit-service', async (_: any, data: { name: string, command: string }) => {
                   const service = {
                     name: data.name,
@@ -167,6 +172,8 @@ export class TrayMenu {
                   width: 900,
                   height: 650,
                   title: `Logs for Group: ${group.name}`,
+                  alwaysOnTop: true,
+                  focusable: true,
                   webPreferences: { nodeIntegration: true, contextIsolation: false }
                 });
                 logWin.loadURL('data:text/html,' + encodeURIComponent(logHtml));
@@ -229,12 +236,32 @@ export class TrayMenu {
                   width: 800,
                   height: 600,
                   title: `Logs for Group: ${group.name}`,
+                  alwaysOnTop: true,
+                  focusable: true,
                   webPreferences: { nodeIntegration: true, contextIsolation: false }
                 });
                 logWin.loadURL('data:text/html,' + encodeURIComponent(logHtml));
                 logWin.on('closed', () => {
                   ipcMain.removeAllListeners('log-update');
                 });
+              }
+            },
+            {
+              label: 'Delete Group',
+                            click: async () => {
+                const { dialog, BrowserWindow } = require('electron');
+                const result = await dialog.showMessageBox(BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0], {
+                        type: 'warning',
+                        buttons: ['Cancel', 'Delete'],
+                        defaultId: 0,
+                        cancelId: 0,
+                        title: 'Delete Group',
+                        message: `Are you sure you want to delete the group '${group.name}'? This will remove the group but keep the services.`
+                      });
+                if (result.response === 1) {
+                  await this.storage.removeGroup(group.name);
+                  await this.updateMenu();
+                }
               }
             },
             { type: 'separator' },
@@ -266,6 +293,8 @@ export class TrayMenu {
                         width: 700,
                         height: 500,
                         title: `Logs for ${service.name}`,
+                        alwaysOnTop: true,
+                        focusable: true,
                         webPreferences: { nodeIntegration: true, contextIsolation: false }
                       });
                       const logHtml = `
@@ -299,8 +328,10 @@ export class TrayMenu {
                       const editWin = new BrowserWindow({
                         width: 400,
                         height: 350,
-                        modal: true,
+                        modal: false,
                         show: false,
+                        alwaysOnTop: true,
+                        focusable: true,
                         webPreferences: { nodeIntegration: true, contextIsolation: false }
                       });
                       const scriptOptions = scripts.length > 0 ? `<label>Scripts:<br><select id='script'>${scripts.map(s => `<option value='${s}'>${s}</option>`)}</select></label><br><br>` : '';
@@ -334,7 +365,10 @@ export class TrayMenu {
                         </body></html>
                       `;
                       editWin.loadURL('data:text/html,' + encodeURIComponent(html));
-                      editWin.once('ready-to-show', () => editWin.show());
+                      editWin.once('ready-to-show', () => {
+                        editWin.show();
+                        editWin.focus();
+                      });
                       ipcMain.once('edit-service', async (_: any, data: { name: string, command: string }) => {
                         service.name = data.name;
                         service.command = data.command;
@@ -350,8 +384,8 @@ export class TrayMenu {
                   {
                     label: 'Remove Service',
                     click: async () => {
-                      const { dialog } = require('electron');
-                      const result = await dialog.showMessageBox({
+                      const { dialog, BrowserWindow } = require('electron');
+                      const result = await dialog.showMessageBox(BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0], {
                         type: 'warning',
                         buttons: ['Cancel', 'Remove'],
                         defaultId: 0,
@@ -399,7 +433,8 @@ export class TrayMenu {
         { label: 'Refresh', click: () => this.updateMenu() },
         {
           label: 'Clear All Services', click: async () => {
-            const result = await dialog.showMessageBox({
+            const { dialog, BrowserWindow } = require('electron');
+            const result = await dialog.showMessageBox(BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0], {
               type: 'warning',
               buttons: ['Cancel', 'Clear All'],
               defaultId: 0,
@@ -435,56 +470,260 @@ export class TrayMenu {
   }
 
   private async addFolder(): Promise<void> {
-    const { dialog } = require('electron');
-    const result = await dialog.showOpenDialog({
-      properties: ['openDirectory'],
-      title: 'Select folder to scan for services'
+    const { dialog, BrowserWindow } = require('electron');
+    const result = await dialog.showOpenDialog(BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0], {
+      properties: ['openDirectory', 'multiSelections'],
+      title: 'Select folders to scan for services (you can select multiple folders)'
     });
     if (!result.canceled && result.filePaths.length > 0) {
-      const folderPath = result.filePaths[0];
-      const folderName = folderPath.split(/[\\/]/).pop();
       const { ServiceDiscovery } = require('./scanner');
       const scanner = new ServiceDiscovery();
-      const discoveredServices = await scanner.scanFolder(folderPath);
-      if (discoveredServices.length > 0) {
-        // Add all discovered services
-        for (const ds of discoveredServices) {
-          const service = {
-            name: ds.name,
-            path: ds.path,
-            command: ds.command,
-            projectType: ds.projectType,
-            autoStart: false
-          };
-          await this.storage.addService(service);
-        }
-        // Automatically create or update a group for this folder
-        const groupServices = discoveredServices.map((ds: any) => ds.name);
-        const groups = await this.storage.getGroups();
-        let group = groups.find(g => g.name === folderName);
-        if (group) {
-          // Merge new services into the group
-          group.services = Array.from(new Set([...group.services, ...groupServices]));
-        } else {
-          group = { name: folderName, services: groupServices };
-          groups.push(group);
-        }
-        await this.storage.saveGroups(groups);
-        await this.updateMenu();
+      const allDiscoveredServices: any[] = [];
+      
+      // Collect all discovered services from all folders
+      for (const folderPath of result.filePaths) {
+        const discoveredServices = await scanner.scanFolder(folderPath);
+        allDiscoveredServices.push(...discoveredServices);
+      }
+      
+      if (allDiscoveredServices.length > 0) {
+        // Show preview dialog for all discovered services
+        await this.showServicePreviewDialog(allDiscoveredServices, result.filePaths);
       } else {
-        await dialog.showMessageBox({
+        const { dialog, BrowserWindow } = require('electron');
+        await dialog.showMessageBox(BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0], {
           type: 'info',
           title: 'No Services Found',
-          message: 'No services were found in the selected folder.'
+          message: 'No services were found in the selected folders.'
         });
       }
     }
   }
 
+  private async showServicePreviewDialog(discoveredServices: any[], selectedFolders: string[]): Promise<void> {
+    const { BrowserWindow, ipcMain } = require('electron');
+    const fs = require('fs');
+    const path = require('path');
+    
+    // Enhance discovered services with available scripts
+    const enhancedServices = discoveredServices.map(ds => {
+      let scripts: string[] = [];
+      if (ds.projectType === 'nodejs' && ds.path) {
+        try {
+          const pkgPath = path.join(ds.path, 'package.json');
+          if (fs.existsSync(pkgPath)) {
+            const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
+            if (pkg.scripts) {
+              scripts = Object.keys(pkg.scripts);
+            }
+          }
+        } catch (e) { /* ignore */ }
+      }
+      return { ...ds, scripts, selected: true };
+    });
+
+    const previewWin = new BrowserWindow({
+      width: 800,
+      height: 700,
+      title: 'Review Discovered Services',
+      modal: false,
+      show: false,
+      resizable: true,
+      alwaysOnTop: true,
+      focusable: true,
+      webPreferences: { nodeIntegration: true, contextIsolation: false }
+    });
+
+    let serviceHtml = '';
+    enhancedServices.forEach((service, index) => {
+      const scriptOptions = service.scripts.length > 0 
+        ? `<select id='script${index}' onchange='updateCommand(${index})' style='width:200px;margin-left:10px;'>
+            <option value=''>Select script...</option>
+            ${service.scripts.map((s: string) => `<option value='${s}'>${s}</option>`).join('')}
+           </select>`
+        : '';
+      
+      serviceHtml += `
+        <div style='border:1px solid #444;margin:10px 0;padding:15px;border-radius:5px;background:#2a2a2a;'>
+          <div style='display:flex;align-items:center;margin-bottom:10px;'>
+            <input type='checkbox' id='select${index}' checked onchange='toggleService(${index})' style='margin-right:10px;'>
+            <strong style='color:#fff;font-size:16px;'>${service.name}</strong>
+            <span style='color:#888;margin-left:10px;'>(${service.projectType})</span>
+          </div>
+          <div style='color:#ccc;margin-bottom:10px;font-family:monospace;font-size:12px;'>${service.path}</div>
+          <div style='display:flex;align-items:center;margin-bottom:10px;'>
+            <label style='color:#ccc;min-width:80px;'>Command:</label>
+            <input type='text' id='cmd${index}' value='${service.command.replace(/'/g, '&#39;')}' style='flex:1;background:#333;color:#fff;border:1px solid #555;padding:5px;border-radius:3px;'>
+            ${scriptOptions}
+          </div>
+        </div>
+      `;
+    });
+
+    const html = `
+      <html>
+        <head>
+          <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #1e1e1e; color: #fff; margin: 0; padding: 20px; }
+            .header { margin-bottom: 20px; }
+            .header h2 { margin: 0 0 10px 0; color: #fff; }
+            .header p { margin: 0; color: #ccc; }
+            .actions { margin: 20px 0; padding: 15px; background: #2a2a2a; border-radius: 5px; }
+            .actions button { background: #007acc; color: white; border: none; padding: 8px 16px; border-radius: 3px; cursor: pointer; margin-right: 10px; }
+            .actions button:hover { background: #005a9e; }
+            .actions button.secondary { background: #555; }
+            .actions button.secondary:hover { background: #666; }
+            .services-container { height: calc(100vh - 200px); overflow-y: auto; }
+          </style>
+        </head>
+        <body>
+          <div class='header'>
+            <h2>Review Discovered Services</h2>
+            <p>Found ${enhancedServices.length} services in ${selectedFolders.length} folder(s). Select which ones to add and customize their commands.</p>
+            <div style='margin-top: 15px;'>
+              <label style='color: #ccc; display: block; margin-bottom: 5px;'>Group Name:</label>
+              <input type='text' id='groupName' value='${path.basename(path.dirname(enhancedServices[0]?.path || ''))}' style='width: 100%; background: #333; color: #fff; border: 1px solid #555; padding: 8px; border-radius: 3px; font-size: 14px;'>
+            </div>
+          </div>
+          
+          <div class='actions'>
+            <button onclick='selectAll()'>Select All</button>
+            <button onclick='deselectAll()'>Deselect All</button>
+            <button onclick='saveServices()' style='background: #28a745;'>Save Selected Services</button>
+            <button onclick='window.close()' class='secondary'>Cancel</button>
+          </div>
+          
+          <div class='services-container'>
+            ${serviceHtml}
+          </div>
+          
+          <script>
+            const { ipcRenderer } = require('electron');
+            
+            function toggleService(index) {
+              const checkbox = document.getElementById('select' + index);
+              const cmdInput = document.getElementById('cmd' + index);
+              cmdInput.disabled = !checkbox.checked;
+              if (document.getElementById('script' + index)) {
+                document.getElementById('script' + index).disabled = !checkbox.checked;
+              }
+            }
+            
+            function selectAll() {
+              for (let i = 0; i < ${enhancedServices.length}; i++) {
+                document.getElementById('select' + i).checked = true;
+                document.getElementById('cmd' + i).disabled = false;
+                if (document.getElementById('script' + i)) {
+                  document.getElementById('script' + i).disabled = false;
+                }
+              }
+            }
+            
+            function deselectAll() {
+              for (let i = 0; i < ${enhancedServices.length}; i++) {
+                document.getElementById('select' + i).checked = false;
+                document.getElementById('cmd' + i).disabled = true;
+                if (document.getElementById('script' + i)) {
+                  document.getElementById('script' + i).disabled = true;
+                }
+              }
+            }
+            
+            function updateCommand(index) {
+              const scriptSelect = document.getElementById('script' + index);
+              const cmdInput = document.getElementById('cmd' + index);
+              if (scriptSelect.value) {
+                cmdInput.value = 'npm run ' + scriptSelect.value;
+              }
+            }
+            
+                                     function saveServices() {
+              const selectedServices = [];
+              const serviceNames = ${JSON.stringify(enhancedServices.map(s => s.name))};
+              const servicePaths = ${JSON.stringify(enhancedServices.map(s => s.path))};
+              const serviceTypes = ${JSON.stringify(enhancedServices.map(s => s.projectType))};
+              const groupName = document.getElementById('groupName').value.trim() || 'New Group';
+              
+              for (let i = 0; i < ${enhancedServices.length}; i++) {
+                const checkbox = document.getElementById('select' + i);
+                if (checkbox.checked) {
+                  selectedServices.push({
+                    name: serviceNames[i],
+                    path: servicePaths[i],
+                    command: document.getElementById('cmd' + i).value,
+                    projectType: serviceTypes[i]
+                  });
+                }
+              }
+              ipcRenderer.send('save-services', selectedServices, groupName);
+            }
+          </script>
+        </body>
+      </html>
+    `;
+
+    previewWin.loadURL('data:text/html,' + encodeURIComponent(html));
+    previewWin.once('ready-to-show', () => {
+      previewWin.show();
+      previewWin.focus();
+    });
+
+        ipcMain.once('save-services', async (_: any, selectedServices: any[], groupName: string) => {
+      if (selectedServices.length > 0) {
+        // Add all services first
+        for (const service of selectedServices) {
+          const serviceObj = {
+            name: service.name,
+            path: service.path,
+            command: service.command,
+            projectType: service.projectType,
+            autoStart: false
+          };
+          await this.storage.addService(serviceObj);
+        }
+
+        // Create a single group for all selected services
+        const groupServices = selectedServices.map((s: { name: string }) => s.name);
+        const groups = await this.storage.getGroups();
+        
+        // Use the provided group name or fallback to a default
+        const finalGroupName = groupName || 'New Group';
+        
+        let group = groups.find(g => g.name === finalGroupName);
+        if (group) {
+          // Merge new services into existing group
+          group.services = Array.from(new Set([...group.services, ...groupServices]));
+        } else {
+          // Create new group
+          group = { name: finalGroupName, services: groupServices };
+          groups.push(group);
+        }
+        await this.storage.saveGroups(groups);
+
+        await this.updateMenu();
+        
+        if (!previewWin.isDestroyed()) {
+          previewWin.close();
+        }
+
+        const { dialog, BrowserWindow } = require('electron');
+        await dialog.showMessageBox(BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0], {
+          type: 'info',
+          title: 'Services Added',
+          message: `Successfully added ${selectedServices.length} services to Runbar.`
+        });
+      } else {
+        if (!previewWin.isDestroyed()) {
+          previewWin.close();
+        }
+      }
+    });
+  }
+
   private async addService(): Promise<void> {
-    const { dialog } = require('electron');
+    const { dialog, BrowserWindow } = require('electron');
     // Prompt for service name
-    const nameResult = await dialog.showMessageBox({
+    const nameResult = await dialog.showMessageBox(BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0], {
       type: 'question',
       buttons: ['OK'],
       title: 'Add Service',
@@ -494,14 +733,14 @@ export class TrayMenu {
     const name = await dialog.showInputBox ? await dialog.showInputBox({ prompt: 'Service Name:' }) : await this.promptInput('Service Name:');
     if (!name) return;
     // Prompt for path
-    const pathResult = await dialog.showOpenDialog({
+    const pathResult = await dialog.showOpenDialog(BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0], {
       properties: ['openDirectory'],
       title: 'Select service folder'
     });
     if (pathResult.canceled || pathResult.filePaths.length === 0) return;
     const path = pathResult.filePaths[0];
     // Prompt for command
-    const commandResult = await dialog.showMessageBox({
+    const commandResult = await dialog.showMessageBox(BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0], {
       type: 'question',
       buttons: ['OK'],
       title: 'Add Service',
@@ -526,12 +765,17 @@ export class TrayMenu {
     const inputWin = new BrowserWindow({
       width: 400,
       height: 200,
-      modal: true,
+      modal: false,
       show: false,
+      alwaysOnTop: true,
+      focusable: true,
       webPreferences: { nodeIntegration: true, contextIsolation: false }
     });
     inputWin.loadURL(`data:text/html,<body style='font-family:sans-serif'><h3>${prompt}</h3><input id='val' style='width:90%' autofocus/><br/><button onclick='require(\'electron\').ipcRenderer.send(\'input\', document.getElementById(\'val\').value)'>OK</button><script>require('electron').ipcRenderer.on('close', () => window.close())</script></body>`);
-    inputWin.once('ready-to-show', () => inputWin.show());
+    inputWin.once('ready-to-show', () => {
+      inputWin.show();
+      inputWin.focus();
+    });
     return new Promise(resolve => {
       const { ipcMain } = require('electron');
       ipcMain.once('input', (_: any, value: string) => {
