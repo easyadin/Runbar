@@ -172,7 +172,6 @@ export class TrayMenu {
                   width: 900,
                   height: 650,
                   title: `Logs for Group: ${group.name}`,
-                  alwaysOnTop: true,
                   focusable: true,
                   webPreferences: { nodeIntegration: true, contextIsolation: false }
                 });
@@ -236,7 +235,6 @@ export class TrayMenu {
                   width: 800,
                   height: 600,
                   title: `Logs for Group: ${group.name}`,
-                  alwaysOnTop: true,
                   focusable: true,
                   webPreferences: { nodeIntegration: true, contextIsolation: false }
                 });
@@ -293,7 +291,6 @@ export class TrayMenu {
                         width: 700,
                         height: 500,
                         title: `Logs for ${service.name}`,
-                        alwaysOnTop: true,
                         focusable: true,
                         webPreferences: { nodeIntegration: true, contextIsolation: false }
                       });
