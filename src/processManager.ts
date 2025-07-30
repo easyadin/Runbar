@@ -10,6 +10,7 @@ interface ManagedProcess {
 export class ProcessManager {
   private processes: Map<string, ManagedProcess> = new Map();
   private _options: ProcessManagerOptions;
+  private statusChangeCallbacks: ((servicePath: string, status: ServiceStatus) => void)[] = [];
 
   constructor(options?: ProcessManagerOptions) {
     this._options = {
@@ -20,11 +21,28 @@ export class ProcessManager {
     };
     // Add periodic status polling
     setInterval(() => {
-      for (const [_, managed] of this.processes.entries()) {
+      for (const [servicePath, managed] of this.processes.entries()) {
         if (managed.process && managed.info.status === 'running') {
+          // Check if process has exited
           if (managed.process.exitCode !== null) {
             managed.info.status = 'stopped';
             managed.info.exitCode = managed.process.exitCode;
+            console.log(`Service stopped (exit code ${managed.process.exitCode}): ${servicePath}`);
+            this.notifyStatusChange(servicePath, 'stopped');
+            continue;
+          }
+          
+          // Check if process is still alive by sending a signal 0
+          try {
+            if (managed.process.pid) {
+              process.kill(managed.process.pid, 0);
+            }
+          } catch (error) {
+            // Process is no longer alive
+            managed.info.status = 'stopped';
+            managed.info.exitCode = -1;
+            console.log(`Service stopped (process killed): ${servicePath}`);
+            this.notifyStatusChange(servicePath, 'stopped');
           }
         }
       }
@@ -190,5 +208,19 @@ export class ProcessManager {
   getServiceLogs(servicePath: string): string[] {
     const managed = this.processes.get(servicePath);
     return managed?.info.logs || [];
+  }
+
+  onStatusChange(callback: (servicePath: string, status: ServiceStatus) => void): void {
+    this.statusChangeCallbacks.push(callback);
+  }
+
+  private notifyStatusChange(servicePath: string, status: ServiceStatus): void {
+    for (const callback of this.statusChangeCallbacks) {
+      try {
+        callback(servicePath, status);
+      } catch (error) {
+        console.error('Error in status change callback:', error);
+      }
+    }
   }
 }
