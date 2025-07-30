@@ -41,7 +41,7 @@ export class ServiceDiscovery {
   }
 
   async scanFolder(folderPath: string): Promise<DiscoveredService[]> {
-    console.log(`:mag: Scanning folder: ${folderPath}`);
+    console.log(`🔍 Scanning folder: ${folderPath}`);
     return this.scanDirectory(folderPath, 0);
   }
 
@@ -70,7 +70,7 @@ export class ServiceDiscovery {
       }
       return services;
     } catch (error) {
-      console.error(`:x: Error scanning directory ${path}:`, error);
+      console.error(`❌ Error scanning directory ${path}:`, error);
       return [];
     }
   }
@@ -79,7 +79,9 @@ export class ServiceDiscovery {
     const fileName = basename(filePath);
 
     for (const [projectType, markers] of Object.entries(this.serviceMarkers)) {
-      if (markers.includes(fileName)) {
+      if (markers.includes(fileName) || markers.some(marker =>
+        marker.includes('*') && fileName.endsWith(marker.replace('*', ''))
+      )) {
         return await this.createServiceFromFile(filePath, projectType as ProjectType);
       }
     }
@@ -108,7 +110,7 @@ export class ServiceDiscovery {
         startCommand = this.getDefaultStartCommand(projectType, filePath);
       }
     } catch (error) {
-      console.warn(`:warning: Could not parse ${filePath}:`, error);
+      console.warn(`⚠️ Could not parse ${filePath}:`, error);
     }
 
     const service: DiscoveredService = {
@@ -119,7 +121,7 @@ export class ServiceDiscovery {
       configFile: filePath
     };
 
-    console.log(`:dart: Detected service: ${serviceName} (${projectType}) in ${service.path}`);
+    console.log(`🎯 Detected service: ${serviceName} (${projectType}) in ${service.path}`);
     return service;
   }
 
