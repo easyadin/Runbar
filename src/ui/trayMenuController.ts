@@ -79,6 +79,7 @@ export class TrayMenuController {
       onAddService: () => this.handleAddService(),
       onOpenSettings: () => this.handleOpenSettings(),
       onQuit: () => this.handleQuit(),
+      processManager: this.processManager, // Pass process manager for real-time status
     };
   }
 

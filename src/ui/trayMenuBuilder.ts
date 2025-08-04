@@ -11,6 +11,7 @@ export interface TrayMenuBuilderOptions {
   onAddService?: () => void;
   onOpenSettings?: () => void;
   onQuit?: () => void;
+  processManager?: any; // Add process manager for real-time status
 }
 
 export class TrayMenuBuilder {
@@ -52,10 +53,8 @@ export class TrayMenuBuilder {
 
     return groups.map((group) => {
       const groupServices = services.filter((s) => group.services.includes(s.name));
-      const runningCount = groupServices.filter((s) => s.status === 'running').length;
+      const runningCount = groupServices.filter((s) => this.getServiceStatus(s) === 'running').length;
       const totalCount = groupServices.length;
-
-      // Debug logging removed
 
       return {
         label: this.formatGroupLabel(group, runningCount, totalCount),
@@ -66,7 +65,7 @@ export class TrayMenuBuilder {
   }
 
   private buildGroupSubmenu(group: Group, groupServices: Service[]): MenuItemConstructorOptions[] {
-    const runningCount = groupServices.filter((s) => s.status === 'running').length;
+    const runningCount = groupServices.filter((s) => this.getServiceStatus(s) === 'running').length;
     const totalCount = groupServices.length;
 
     return [
@@ -76,7 +75,7 @@ export class TrayMenuBuilder {
       },
       { type: 'separator' },
       ...groupServices.map((service) => ({
-        label: `${service.name} (${service.status || 'unknown'})`,
+        label: `${service.name} (${this.getServiceStatus(service) || 'unknown'})`,
         click: () => this.options.onServiceToggle?.(service.id),
       })),
       { type: 'separator' },
@@ -121,4 +120,11 @@ export class TrayMenuBuilder {
   }
 
   // Status icons removed to avoid Electron menu issues
+
+  private getServiceStatus(service: Service): string {
+    if (!this.options.processManager) {
+      return service.status || 'unknown';
+    }
+    return this.options.processManager.getServiceStatus(service.path);
+  }
 } 
