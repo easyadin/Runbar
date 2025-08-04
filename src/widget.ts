@@ -24,7 +24,7 @@ export class Widget {
 
     // Position widget in top-right corner
     const widgetWidth = 300;
-    const widgetHeight = this.widgetType === 'logs' ? 400 : 200;
+    const widgetHeight = this.widgetType === 'logs' ? 400 : 300;
     const x = width - widgetWidth - 20;
     const y = 20;
 
