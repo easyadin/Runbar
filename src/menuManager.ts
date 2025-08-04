@@ -715,10 +715,16 @@ export class MenuManager {
 
   private showNotification(title: string, body: string, silent: boolean = false): void {
     const { Notification } = require('electron');
+    const path = require('path');
+    
+    // Use a dedicated transparent notification icon
+    const notificationIconPath = path.join(__dirname, '../assets/notification-icon.png');
+    
     new Notification({
       title,
       body,
-      silent
+      silent,
+      icon: notificationIconPath
     }).show();
   }
 } 
