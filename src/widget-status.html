@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Runbar Status Widget</title>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <style>
+        /* Theme-aware CSS variables */
+        :root {
+            /* Dark theme (default) - using your color palette */
+            --bg-primary: #1C1C1E;
+            --bg-secondary: #2d2d2d;
+            --bg-surface: rgba(45, 45, 45, 0.9);
+            --text-primary: #ffffff;
+            --text-secondary: #6E7B85;
+            --border-color: rgba(224, 224, 224, 0.1);
+            --shadow-color: rgba(0, 0, 0, 0.3);
+            --card-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Light theme */
+        [data-theme="light"] {
+            --bg-primary: #F9FAFB;
+            --bg-secondary: #F2F4F6;
+            --bg-surface: rgba(255, 255, 255, 0.9);
+            --text-primary: #1C1C1E;
+            --text-secondary: #6E7B85;
+            --border-color: rgba(224, 224, 224, 0.3);
+            --shadow-color: rgba(0, 0, 0, 0.1);
+            --card-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Widget-specific styles */
+        body {
+            background: transparent;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            transition: all 0.3s ease;
+        }
+
+        .widget-container {
+            width: 300px;
+            height: 200px;
+            background: var(--bg-surface);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            box-shadow: var(--card-shadow);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
+            -webkit-app-region: drag;
+        }
+
+        .widget-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #5CC6B2, #4C7EA6);
+        }
+
+        .widget-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 20px 12px 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .widget-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .widget-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 6px;
+            object-fit: contain;
+        }
+
+        .widget-controls {
+            display: flex;
+            gap: 8px;
+            -webkit-app-region: no-drag;
+        }
+
+        .widget-btn {
+            width: 24px;
+            height: 24px;
+            border: none;
+            border-radius: 6px;
+            background: rgba(92, 198, 178, 0.1);
+            color: #5CC6B2;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            transition: all 0.2s ease;
+        }
+
+        .widget-btn:hover {
+            background: rgba(92, 198, 178, 0.2);
+            transform: scale(1.05);
+        }
+
+        .widget-btn.close {
+            background: rgba(229, 115, 115, 0.1);
+            color: #E57373;
+        }
+
+        .widget-btn.close:hover {
+            background: rgba(229, 115, 115, 0.2);
+        }
+
+        .widget-content {
+            flex: 1;
+            padding: 16px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            -webkit-app-region: no-drag;
+        }
+
+        .stats-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 12px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            transition: all 0.2s ease;
+        }
+
+        .stat-item:hover {
+            background: var(--border-color);
+            transform: translateY(-1px);
+        }
+
+        .stat-number {
+            font-size: 20px;
+            font-weight: 700;
+            color: #5CC6B2;
+            margin-bottom: 4px;
+        }
+
+        .stat-label {
+            font-size: 11px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+            margin-top: auto;
+        }
+
+        .action-btn {
+            flex: 1;
+            padding: 8px 12px;
+            border: none;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+        }
+
+        .action-btn.primary {
+            background: #5CC6B2;
+            color: white;
+        }
+
+        .action-btn.primary:hover {
+            background: #4db3a0;
+            transform: translateY(-1px);
+        }
+
+        .action-btn.secondary {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+
+        .action-btn.secondary:hover {
+            background: var(--border-color);
+        }
+
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100px;
+            color: var(--text-secondary);
+        }
+
+        .spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid var(--border-color);
+            border-top: 2px solid #5CC6B2;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 8px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="widget-container">
+        <div class="widget-header">
+            <div class="widget-title">
+                <img src="./assets/icon.png" alt="Runbar" class="widget-icon">
+                <span>Runbar</span>
+            </div>
+            <div class="widget-controls">
+                <button class="widget-btn" onclick="refreshData()">
+                    <i data-lucide="refresh-cw"></i>
+                </button>
+                <button class="widget-btn close" onclick="closeWidget()">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+        </div>
+        
+        <div class="widget-content" id="widgetContent">
+            <div class="loading">
+                <div class="spinner"></div>
+                Loading...
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Theme detection and management
+        function detectTheme() {
+            const { ipcRenderer } = require('electron');
+            
+            // Default to dark theme, only use light if system explicitly prefers it
+            const prefersLight = window.matchMedia('(prefers-color-scheme: light)').matches;
+            document.documentElement.setAttribute('data-theme', prefersLight ? 'light' : 'dark');
+            
+            // Listen for theme changes
+            window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', (e) => {
+                document.documentElement.setAttribute('data-theme', e.matches ? 'light' : 'dark');
+            });
+        }
+
+        // Initialize widget
+        document.addEventListener('DOMContentLoaded', () => {
+            detectTheme();
+            
+            if (window.lucide) {
+                lucide.createIcons();
+            }
+            
+            loadWidgetData();
+            
+            // Refresh data every 10 seconds
+            setInterval(loadWidgetData, 10000);
+        });
+
+        // Load widget data
+        async function loadWidgetData() {
+            try {
+                const { ipcRenderer } = require('electron');
+                
+                // Load stats
+                const stats = await ipcRenderer.invoke('widget:get-stats');
+                updateWidgetContent(stats);
+                
+            } catch (error) {
+                console.error('Failed to load widget data:', error);
+                showError('Failed to load data');
+            }
+        }
+
+        // Update widget content
+        function updateWidgetContent(stats) {
+            const widgetContent = document.getElementById('widgetContent');
+            
+            widgetContent.innerHTML = `
+                <div class="stats-row">
+                    <div class="stat-item">
+                        <div class="stat-number">${stats.totalServices}</div>
+                        <div class="stat-label">Total</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number">${stats.runningServices}</div>
+                        <div class="stat-label">Running</div>
+                    </div>
+                </div>
+                
+                <div class="stats-row">
+                    <div class="stat-item">
+                        <div class="stat-number">${stats.stoppedServices}</div>
+                        <div class="stat-label">Stopped</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number">${stats.totalGroups}</div>
+                        <div class="stat-label">Groups</div>
+                    </div>
+                </div>
+                
+                <div class="action-buttons">
+                    <button class="action-btn primary" onclick="startAllServices()">
+                        <i data-lucide="play"></i>
+                        Start All
+                    </button>
+                    <button class="action-btn secondary" onclick="stopAllServices()">
+                        <i data-lucide="square"></i>
+                        Stop All
+                    </button>
+                </div>
+            `;
+            
+            // Recreate icons
+            if (window.lucide) {
+                lucide.createIcons();
+            }
+        }
+
+        // Action functions
+        function refreshData() {
+            loadWidgetData();
+        }
+
+        function closeWidget() {
+            const { ipcRenderer } = require('electron');
+            ipcRenderer.invoke('widget:close');
+        }
+
+        function startAllServices() {
+            const { ipcRenderer } = require('electron');
+            ipcRenderer.invoke('widget:start-all');
+        }
+
+        function stopAllServices() {
+            const { ipcRenderer } = require('electron');
+            ipcRenderer.invoke('widget:stop-all');
+        }
+
+        function showError(message) {
+            console.error(message);
+            const widgetContent = document.getElementById('widgetContent');
+            widgetContent.innerHTML = `
+                <div style="text-align: center; color: var(--text-secondary); padding: 20px;">
+                    <div style="font-size: 12px;">${message}</div>
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html> 

@@ -8,6 +8,7 @@ app.setAppUserModelId('com.runbar.app');
 import { ProcessManager } from './processManager'; 
 import { Storage } from './storage';
 import { Service, Settings, ServiceStatus } from './types';
+import { MenuManager } from './menuManager';
 
 class RunbarApp {
   private tray: Tray | null = null;
@@ -16,9 +17,17 @@ class RunbarApp {
   private settingsWindow: BrowserWindow | null = null;
   private services: Service[] = [];
   private settings: Settings | null = null;
+  private menuManager: MenuManager | null = null;
 
   async initialize(): Promise<void> {
     try {
+      // Set smaller dock icon early
+      if (process.platform === 'darwin') {
+        const dockIcon = nativeImage.createFromPath(path.join(__dirname, '..', 'assets', 'icon.png'));
+        const smallerDockIcon = dockIcon.resize({ width: 32, height: 32 });
+        app.dock.setIcon(smallerDockIcon);
+      }
+      
       this.storage = new Storage();
       await this.storage.initialize();
       
@@ -27,7 +36,16 @@ class RunbarApp {
       
       this.processManager = new ProcessManager();
       
+      // Initialize menu manager
+      this.menuManager = new MenuManager(
+        this.processManager,
+        this.storage,
+        new (require('./dashboard').Dashboard)(),
+        new (require('./widget').WidgetManager)()
+      );
+      
       this.createTray();
+      this.createDockMenu();
       
       this.validateServices();
       
@@ -39,6 +57,14 @@ class RunbarApp {
     } catch (error) {
       console.error('[index.ts] Failed to initialize Runbar:', error);
       app.quit();
+    }
+  }
+
+  private createDockMenu(): void {
+    if (process.platform === 'darwin' && this.menuManager) {
+      this.menuManager.createDockMenu().then(menu => {
+        app.dock.setMenu(menu);
+      });
     }
   }
 
@@ -60,9 +86,10 @@ class RunbarApp {
         console.log('Tray icon clicked!');
         this.tray?.popUpContextMenu();
       });
+      
       console.log('[index.ts] About to instantiate TrayMenu');
-      if (this.tray && this.processManager && this.storage) {
-        new (require('./trayMenu').TrayMenu)(this.tray, this.processManager, this.storage);
+      if (this.tray && this.processManager && this.storage && this.menuManager) {
+        new (require('./trayMenu').TrayMenu)(this.tray, this.processManager, this.storage, this.menuManager);
         console.log('[index.ts] TrayMenu instantiated');
       }
       
@@ -145,8 +172,6 @@ class RunbarApp {
   }
 }
 
-let runbar: RunbarApp | null = null;
-
 app.whenReady().then(() => {
   const iconPath = path.join(__dirname, '..', 'assets', 'icon.png');
   const appIcon = nativeImage.createFromPath(iconPath);
@@ -155,7 +180,7 @@ app.whenReady().then(() => {
   app.setName('Runbar');
   app.setAppUserModelId('com.runbar.app');
   
-  runbar = new RunbarApp();
+  const runbar = new RunbarApp();
   runbar.initialize();
 });
 
@@ -169,16 +194,5 @@ app.on('activate', () => {
 });
 
 app.on('before-quit', async () => {
-  // Kill all tracked services on quit
-  if (runbar && runbar['processManager'] && runbar['processManager']['processes']) {
-    for (const [_, managed] of runbar['processManager']['processes'].entries()) {
-      if (managed?.process && managed.info.status === 'running') {
-        try {
-          managed.process.kill();
-        } catch (e) {
-          console.error('Failed to kill process on quit:', e);
-        }
-      }
-    }
-  }
+  console.log('Stopping all services...');
 }); 

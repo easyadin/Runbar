@@ -1,22 +1,28 @@
+// Core domain types
 export interface Service {
+  id: string;
   name: string;
   path: string;
   command: string;
+  port?: number;
   autoStart?: boolean;
   projectType?: ProjectType;
   status?: ServiceStatus;
   logs?: string[];
   lastStarted?: string;
   lastStopped?: string;
-  dependencies?: string[]; // Names of services this service depends on
-  startupDelay?: number; // Delay in milliseconds before starting this service
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Group {
+  id: string;
   name: string;
-  services: string[]; // Service names
+  services: string[]; // Service IDs
   autoStart?: boolean;
   lastRun?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Settings {
@@ -26,6 +32,8 @@ export interface Settings {
   logStorageLimit?: number;
   statusPollingInterval?: number;
   autoUpdateEnabled?: boolean;
+  theme?: 'light' | 'dark' | 'system';
+  notifications?: boolean;
 }
 
 export interface ConfigData {
@@ -36,6 +44,7 @@ export interface ConfigData {
   settings: Settings;
 }
 
+// Status and type enums
 export type ServiceStatus = 'running' | 'stopped' | 'starting' | 'stopping' | 'error';
 
 export type ProjectType = 
@@ -46,18 +55,9 @@ export type ProjectType =
   | 'python' 
   | 'java' 
   | 'docker' 
-  | 'php'
-  | 'dotnet'
-  | 'flutter'
-  | 'react-native'
-  | 'vue'
-  | 'angular'
-  | 'svelte'
-  | 'nextjs'
-  | 'nuxt'
-  | 'gatsby'
   | 'unknown';
 
+// Discovery types
 export interface DiscoveredService {
   name: string;
   path: string;
@@ -68,6 +68,13 @@ export interface DiscoveredService {
   scripts?: Record<string, string>;
 }
 
+export interface ServiceDiscoveryOptions {
+  markers: string[];
+  maxDepth?: number;
+  ignorePatterns?: string[];
+}
+
+// Process management types
 export interface ProcessInfo {
   pid: number;
   status: ServiceStatus;
@@ -77,6 +84,13 @@ export interface ProcessInfo {
   error?: string;
 }
 
+export interface ProcessManagerOptions {
+  logStorageLimit?: number;
+  statusPollingInterval?: number;
+  gracefulShutdownTimeout?: number;
+}
+
+// UI types
 export interface TrayStatus {
   overall: 'running' | 'starting' | 'stopped' | 'error';
   runningCount: number;
@@ -84,30 +98,19 @@ export interface TrayStatus {
   errorCount: number;
 }
 
-export interface ServiceDiscoveryOptions {
-  markers: string[];
-  maxDepth?: number;
-  ignorePatterns?: string[];
-}
-
-export interface ProcessManagerOptions {
-  logStorageLimit?: number;
-  statusPollingInterval?: number;
-  gracefulShutdownTimeout?: number;
-}
-
+// Storage types
 export interface StorageOptions {
   configDir?: string;
   backupOnError?: boolean;
   validateOnLoad?: boolean;
 }
 
-// Event types for the app
+// Event types
 export interface ServiceEvent {
   type: 'started' | 'stopped' | 'error' | 'status-changed';
   service: Service;
   timestamp: Date;
-  data?: any;
+  data?: unknown;
 }
 
 export interface GroupEvent {
@@ -122,7 +125,7 @@ export class RunbarError extends Error {
   constructor(
     message: string,
     public code: string,
-    public details?: any
+    public details?: unknown
   ) {
     super(message);
     this.name = 'RunbarError';
@@ -133,7 +136,7 @@ export class ServiceError extends RunbarError {
   constructor(
     message: string,
     public service: Service,
-    details?: any
+    details?: unknown
   ) {
     super(message, 'SERVICE_ERROR', details);
     this.name = 'ServiceError';
@@ -144,9 +147,45 @@ export class ValidationError extends RunbarError {
   constructor(
     message: string,
     public field: string,
-    public value?: any
+    public value?: unknown
   ) {
     super(message, 'VALIDATION_ERROR', { field, value });
     this.name = 'ValidationError';
   }
+}
+
+export class StorageError extends RunbarError {
+  constructor(
+    message: string,
+    public operation: string,
+    details?: unknown
+  ) {
+    super(message, 'STORAGE_ERROR', { operation, ...(details as Record<string, unknown>) });
+    this.name = 'StorageError';
+  }
+}
+
+// Configuration types
+export interface AppConfig {
+  name: string;
+  version: string;
+  description: string;
+  author: string;
+  license: string;
+  repository: string;
+  homepage: string;
+}
+
+export interface BuildConfig {
+  appId: string;
+  productName: string;
+  directories: {
+    output: string;
+  };
+  files: string[];
+  mac: {
+    category: string;
+    icon: string;
+    target: string;
+  };
 } 

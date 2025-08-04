@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Runbar Dashboard</title>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <style>
+        /* Aesthetic Behavior Protocol (ABP v1.0) Implementation */
+        :root {
+            /* Color System */
+            --primary: #4DB3A0;
+            --primary-light: rgba(77, 179, 160, 0.15);
+            
+            /* Background Colors */
+            --bg-primary: #121212;
+            --bg-secondary: #1C1C1C;
+            
+            /* Text Colors */
+            --text-primary: #FFFFFF;
+            --text-secondary: #B0B0B0;
+            --text-muted: rgba(176, 176, 176, 0.6);
+            
+            /* Glass Surfaces */
+            --glass-bg: rgba(255, 255, 255, 0.85);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            --glass-shadow-hover: 0 16px 64px rgba(0, 0, 0, 0.4);
+            --glass-blur: blur(18px);
+            
+            /* Status Colors */
+            --success: #4DB3A0;
+            --error: #FF3B30;
+            
+            /* Spacing Grid (4-8-16) */
+            --space-4: 4px;
+            --space-8: 8px;
+            --space-12: 12px;
+            --space-16: 16px;
+            --space-20: 20px;
+            --space-24: 24px;
+            --space-32: 32px;
+            --space-48: 48px;
+            
+            /* Border Radius */
+            --radius-sm: 12px;
+            --radius-md: 16px;
+            --radius-lg: 20px;
+            --radius-xl: 24px;
+            
+            /* Typography */
+            --font-size-xs: 12px;
+            --font-size-sm: 13px;
+            --font-size-md: 14px;
+            --font-size-lg: 16px;
+            --font-size-xl: 18px;
+            
+            /* Motion */
+            --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-normal: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Base Styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+            color: var(--text-primary);
+            font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'SF Pro Display', 'Helvetica Neue', sans-serif;
+            font-size: var(--font-size-md);
+            line-height: 1.5;
+            transition: var(--transition-normal);
+        }
+
+        .dashboard-container {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding: var(--space-24);
+            gap: var(--space-24);
+        }
+
+        /* Glass Surface Component */
+        .glass-surface {
+            background: var(--glass-bg);
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--glass-shadow);
+            transition: var(--transition-normal);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .glass-surface::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+            pointer-events: none;
+        }
+
+        .glass-surface:hover {
+            box-shadow: var(--glass-shadow-hover);
+            transform: translateY(-1px);
+        }
+
+        /* Header Component */
+        .header {
+            @extend .glass-surface;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: var(--space-20);
+            margin-bottom: var(--space-16);
+            flex-shrink: 0;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: var(--space-12);
+            font-size: var(--font-size-lg);
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: var(--radius-sm);
+            object-fit: contain;
+            background: var(--primary-light);
+            padding: var(--space-4);
+            transition: var(--transition-normal);
+            border: 1px solid rgba(77, 179, 160, 0.2);
+        }
+
+        .logo:hover .logo-icon {
+            transform: scale(1.02);
+            border-color: rgba(77, 179, 160, 0.3);
+        }
+
+        .header-controls {
+            display: flex;
+            gap: var(--space-8);
+        }
+
+        /* Button Component */
+        .btn {
+            background: transparent;
+            border: none;
+            border-radius: 50px;
+            padding: var(--space-8) var(--space-16);
+            font-size: var(--font-size-md);
+            font-weight: 400;
+            color: var(--text-primary);
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: var(--space-8);
+            text-decoration: none;
+            transition: var(--transition-normal);
+            position: relative;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: var(--primary-light);
+            border-radius: 50px;
+            opacity: 0;
+            transition: var(--transition-fast);
+        }
+
+        .btn:hover::before {
+            opacity: 1;
+        }
+
+        .btn.primary {
+            color: var(--primary);
+        }
+
+        .btn.primary::before {
+            background: var(--primary-light);
+        }
+
+        .btn.small {
+            padding: var(--space-4) var(--space-12);
+            font-size: var(--font-size-sm);
+        }
+
+        .btn > * {
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Stats Grid Component */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: var(--space-16);
+            margin-bottom: var(--space-24);
+            flex-shrink: 0;
+        }
+
+        .stat-card {
+            @extend .glass-surface;
+            padding: var(--space-24);
+            text-align: center;
+            cursor: pointer;
+        }
+
+        .stat-number {
+            font-size: var(--font-size-xl);
+            font-weight: 600;
+            color: var(--primary);
+            margin-bottom: var(--space-8);
+            transition: var(--transition-normal);
+        }
+
+        .stat-card:hover .stat-number {
+            transform: scale(1.02);
+        }
+
+        .stat-label {
+            font-size: var(--font-size-sm);
+            color: var(--text-secondary);
+            font-weight: 400;
+        }
+
+        /* Content Panels Component */
+        .content-panels {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--space-24);
+            flex: 1;
+            min-height: 0;
+        }
+
+        .panel {
+            @extend .glass-surface;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: var(--space-20);
+            border-bottom: 1px solid var(--glass-border);
+            background: rgba(255, 255, 255, 0.02);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            flex-shrink: 0;
+        }
+
+        .panel-title {
+            font-size: var(--font-size-lg);
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .panel-controls {
+            display: flex;
+            gap: var(--space-8);
+        }
+
+        /* List Components */
+        .service-list, .group-list {
+            padding: var(--space-20);
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-8);
+            min-height: 0;
+        }
+
+        .service-item, .group-item {
+            @extend .glass-surface;
+            padding: var(--space-16);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            border-radius: var(--radius-md);
+            flex-shrink: 0;
+        }
+
+        .service-info, .group-info {
+            flex: 1;
+        }
+
+        .service-name, .group-name {
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: var(--space-4);
+            font-size: var(--font-size-md);
+        }
+
+        .service-status {
+            font-size: var(--font-size-xs);
+            font-weight: 400;
+            padding: var(--space-4) var(--space-8);
+            border-radius: var(--radius-sm);
+            background: var(--glass-bg);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid var(--glass-border);
+            color: var(--text-secondary);
+        }
+
+        .status-running {
+            background: rgba(77, 179, 160, 0.1);
+            color: var(--success);
+            border-color: rgba(77, 179, 160, 0.2);
+        }
+
+        .status-stopped {
+            background: rgba(255, 59, 48, 0.1);
+            color: var(--error);
+            border-color: rgba(255, 59, 48, 0.2);
+        }
+
+        .group-status {
+            font-size: var(--font-size-xs);
+            color: var(--text-secondary);
+        }
+
+        .item-actions {
+            display: flex;
+            gap: var(--space-8);
+        }
+
+        /* Empty States */
+        .empty-state {
+            text-align: center;
+            padding: var(--space-48) var(--space-20);
+            color: var(--text-secondary);
+        }
+
+        .empty-icon {
+            font-size: var(--space-32);
+            margin-bottom: var(--space-16);
+            opacity: 0.5;
+        }
+
+        /* Loading Animation */
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: var(--space-32);
+            color: var(--text-secondary);
+        }
+
+        .spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid var(--glass-border);
+            border-top: 2px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: var(--space-8);
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Scrollbar Styling */
+        .service-list::-webkit-scrollbar,
+        .group-list::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .service-list::-webkit-scrollbar-track,
+        .group-list::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .service-list::-webkit-scrollbar-thumb,
+        .group-list::-webkit-scrollbar-thumb {
+            background: rgba(77, 179, 160, 0.2);
+            border-radius: 2px;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+
+        .service-list::-webkit-scrollbar-thumb:hover,
+        .group-list::-webkit-scrollbar-thumb:hover {
+            background: rgba(77, 179, 160, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <img src="./assets/icon.png" alt="Runbar" class="logo-icon">
+                <span>Runbar</span>
+            </div>
+            <div class="header-controls">
+                <button class="btn" onclick="refreshData()">
+                    <i data-lucide="refresh-cw"></i> Refresh
+                </button>
+                <button class="btn primary" onclick="addService()">
+                    <i data-lucide="plus"></i> Add Service
+                </button>
+            </div>
+        </header>
+
+        <!-- Stats Grid -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-number" id="totalServices">0</div>
+                <div class="stat-label">Total Services</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="runningServices">0</div>
+                <div class="stat-label">Running</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="stoppedServices">0</div>
+                <div class="stat-label">Stopped</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="totalGroups">0</div>
+                <div class="stat-label">Groups</div>
+            </div>
+        </div>
+
+        <!-- Content Panels -->
+        <div class="content-panels">
+            <!-- Services Panel -->
+            <div class="panel">
+                <div class="panel-header">
+                    <div class="panel-title">Services</div>
+                    <div class="panel-controls">
+                        <button class="btn small" onclick="startAllServices()">
+                            <i data-lucide="play"></i> Start All
+                        </button>
+                        <button class="btn small" onclick="stopAllServices()">
+                            <i data-lucide="square"></i> Stop All
+                        </button>
+                    </div>
+                </div>
+                <div class="service-list" id="serviceList">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <span>Loading services...</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Groups Panel -->
+            <div class="panel">
+                <div class="panel-header">
+                    <div class="panel-title">Groups</div>
+                    <div class="panel-controls">
+                        <button class="btn small" onclick="createGroup()">
+                            <i data-lucide="folder-plus"></i> New Group
+                        </button>
+                    </div>
+                </div>
+                <div class="group-list" id="groupList">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <span>Loading groups...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Theme detection and management
+        function detectTheme() {
+            const { ipcRenderer } = require('electron');
+            
+            // Default to dark theme, only use light if system explicitly prefers it
+            const prefersLight = window.matchMedia('(prefers-color-scheme: light)').matches;
+            document.documentElement.setAttribute('data-theme', prefersLight ? 'light' : 'dark');
+            
+            // Listen for theme changes
+            window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', (e) => {
+                document.documentElement.setAttribute('data-theme', e.matches ? 'light' : 'dark');
+            });
+        }
+
+        // Enhanced dashboard with modern animations
+        document.addEventListener('DOMContentLoaded', () => {
+            detectTheme();
+            
+            if (window.lucide) {
+                lucide.createIcons();
+            }
+            
+            // Add staggered animation to stats cards
+            animateStatsCards();
+            
+            loadDashboard();
+            
+            // Refresh data every 5 seconds
+            setInterval(loadDashboard, 5000);
+        });
+
+        // Animate stats cards with staggered effect
+        function animateStatsCards() {
+            const statCards = document.querySelectorAll('.stat-card');
+            statCards.forEach((card, index) => {
+                card.style.opacity = '0';
+                card.style.transform = 'translateY(20px)';
+                
+                setTimeout(() => {
+                    card.style.transition = 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)';
+                    card.style.opacity = '1';
+                    card.style.transform = 'translateY(0)';
+                }, index * 100);
+            });
+        }
+
+        // Enhanced loading with skeleton animation
+        function showLoadingState() {
+            const serviceList = document.getElementById('serviceList');
+            const groupList = document.getElementById('groupList');
+            
+            serviceList.innerHTML = `
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <span>Loading services...</span>
+                </div>
+            `;
+            
+            groupList.innerHTML = `
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <span>Loading groups...</span>
+                </div>
+            `;
+        }
+
+        // Load dashboard data
+        async function loadDashboard() {
+            try {
+                const { ipcRenderer } = require('electron');
+                
+                // Load stats
+                const stats = await ipcRenderer.invoke('dashboard:get-stats');
+                updateStats(stats);
+                
+                // Load services
+                const services = await ipcRenderer.invoke('dashboard:get-services');
+                updateServiceList(services);
+                
+                // Load groups
+                const groups = await ipcRenderer.invoke('dashboard:get-groups');
+                updateGroupList(groups);
+                
+            } catch (error) {
+                console.error('Failed to load dashboard data:', error);
+                showError('Failed to load dashboard data');
+            }
+        }
+
+        // Smart service list update - only animate new/changed items
+        function updateServiceList(services) {
+            const serviceList = document.getElementById('serviceList');
+            
+            if (!services || services.length === 0) {
+                serviceList.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">🚀</div>
+                        <div class="text-lg font-semibold text-primary mb-sm">No services found</div>
+                        <div class="text-sm text-muted">Add a folder to get started with Runbar</div>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Get existing items
+            const existingItems = serviceList.querySelectorAll('.service-item');
+            const existingPaths = Array.from(existingItems).map(item => item.dataset.path);
+            
+            // Create new HTML
+            const newHTML = services.map((service, index) => `
+                <div class="service-item" data-path="${service.path}" data-index="${index}">
+                    <div class="service-info">
+                        <div class="service-name">${service.name}</div>
+                        <div class="service-status status-${service.status || 'stopped'}">
+                            ${service.status || 'stopped'}
+                        </div>
+                    </div>
+                    <div class="item-actions">
+                        <button class="btn small" onclick="toggleService('${service.path}')" title="${service.status === 'running' ? 'Stop' : 'Start'} service">
+                            <i data-lucide="${service.status === 'running' ? 'square' : 'play'}"></i>
+                        </button>
+                        <button class="btn small" onclick="viewServiceLogs('${service.path}')" title="View logs">
+                            <i data-lucide="file-text"></i>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+            
+            // Check if this is the first load or if items have changed
+            const isFirstLoad = existingItems.length === 0;
+            const hasNewItems = services.some(service => !existingPaths.includes(service.path));
+            
+            // Update the content
+            serviceList.innerHTML = newHTML;
+            
+            // Only animate if it's the first load or there are new items
+            if (isFirstLoad || hasNewItems) {
+                const serviceItems = serviceList.querySelectorAll('.service-item');
+                serviceItems.forEach((item, index) => {
+                    // Only animate new items (not existing ones)
+                    if (isFirstLoad || !existingPaths.includes(item.dataset.path)) {
+                        item.style.opacity = '0';
+                        item.style.transform = 'translateX(-20px)';
+                        
+                        setTimeout(() => {
+                            item.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+                            item.style.opacity = '1';
+                            item.style.transform = 'translateX(0)';
+                        }, index * 30);
+                    }
+                });
+            }
+            
+            // Recreate icons
+            if (window.lucide) {
+                lucide.createIcons();
+            }
+        }
+
+        // Smart group list update - only animate new/changed items
+        function updateGroupList(groups) {
+            const groupList = document.getElementById('groupList');
+            
+            if (!groups || groups.length === 0) {
+                groupList.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">📁</div>
+                        <div class="text-lg font-semibold text-primary mb-sm">No groups found</div>
+                        <div class="text-sm text-muted">Create a group to organize your services</div>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Get existing items
+            const existingItems = groupList.querySelectorAll('.group-item');
+            const existingNames = Array.from(existingItems).map(item => item.dataset.name);
+            
+            // Create new HTML
+            const newHTML = groups.map((group, index) => `
+                <div class="group-item" data-name="${group.name}" data-index="${index}">
+                    <div class="group-info">
+                        <div class="group-name">${group.name}</div>
+                        <div class="group-status">${group.services.length} services</div>
+                    </div>
+                    <div class="item-actions">
+                        <button class="btn small" onclick="viewGroup('${group.name}')" title="View group">
+                            <i data-lucide="folder-open"></i>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+            
+            // Check if this is the first load or if items have changed
+            const isFirstLoad = existingItems.length === 0;
+            const hasNewItems = groups.some(group => !existingNames.includes(group.name));
+            
+            // Update the content
+            groupList.innerHTML = newHTML;
+            
+            // Only animate if it's the first load or there are new items
+            if (isFirstLoad || hasNewItems) {
+                const groupItems = groupList.querySelectorAll('.group-item');
+                groupItems.forEach((item, index) => {
+                    // Only animate new items (not existing ones)
+                    if (isFirstLoad || !existingNames.includes(item.dataset.name)) {
+                        item.style.opacity = '0';
+                        item.style.transform = 'translateX(-20px)';
+                        
+                        setTimeout(() => {
+                            item.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+                            item.style.opacity = '1';
+                            item.style.transform = 'translateX(0)';
+                        }, index * 30);
+                    }
+                });
+            }
+            
+            // Recreate icons
+            if (window.lucide) {
+                lucide.createIcons();
+            }
+        }
+
+        // Enhanced stats update with animation
+        function updateStats(stats) {
+            const statElements = {
+                totalServices: document.getElementById('totalServices'),
+                runningServices: document.getElementById('runningServices'),
+                stoppedServices: document.getElementById('stoppedServices'),
+                totalGroups: document.getElementById('totalGroups')
+            };
+            
+            Object.entries(statElements).forEach(([key, element]) => {
+                if (element && stats[key] !== undefined) {
+                    const newValue = stats[key];
+                    const currentValue = parseInt(element.textContent) || 0;
+                    
+                    // Animate number change
+                    animateNumberChange(element, currentValue, newValue);
+                }
+            });
+        }
+
+        // Smooth number animation
+        function animateNumberChange(element, from, to) {
+            const duration = 600;
+            const start = performance.now();
+            
+            function update(currentTime) {
+                const elapsed = currentTime - start;
+                const progress = Math.min(elapsed / duration, 1);
+                
+                // Easing function for smooth animation
+                const easeOutQuart = 1 - Math.pow(1 - progress, 4);
+                const current = Math.round(from + (to - from) * easeOutQuart);
+                
+                element.textContent = current;
+                
+                if (progress < 1) {
+                    requestAnimationFrame(update);
+                }
+            }
+            
+            requestAnimationFrame(update);
+        }
+
+        // Enhanced action functions with feedback
+        function refreshData() {
+            // Add loading state
+            showLoadingState();
+            loadDashboard();
+        }
+
+        function toggleService(servicePath) {
+            const { ipcRenderer } = require('electron');
+            
+            // Add visual feedback
+            const button = event.target.closest('button');
+            if (button) {
+                button.style.transform = 'scale(0.95)';
+                setTimeout(() => {
+                    button.style.transform = 'scale(1)';
+                }, 150);
+            }
+            
+            ipcRenderer.invoke('dashboard:toggle-service', servicePath);
+        }
+
+        function viewServiceLogs(servicePath) {
+            const { ipcRenderer } = require('electron');
+            
+            // Add visual feedback
+            const button = event.target.closest('button');
+            if (button) {
+                button.style.transform = 'scale(0.95)';
+                setTimeout(() => {
+                    button.style.transform = 'scale(1)';
+                }, 150);
+            }
+            
+            ipcRenderer.send('view-service-logs', servicePath);
+        }
+
+        function startAllServices() {
+            const { ipcRenderer } = require('electron');
+            
+            // Add visual feedback
+            const button = event.target.closest('button');
+            if (button) {
+                button.style.transform = 'scale(0.95)';
+                setTimeout(() => {
+                    button.style.transform = 'scale(1)';
+                }, 150);
+            }
+            
+            ipcRenderer.invoke('dashboard:start-all-services');
+        }
+
+        function stopAllServices() {
+            const { ipcRenderer } = require('electron');
+            
+            // Add visual feedback
+            const button = event.target.closest('button');
+            if (button) {
+                button.style.transform = 'scale(0.95)';
+                setTimeout(() => {
+                    button.style.transform = 'scale(1)';
+                }, 150);
+            }
+            
+            ipcRenderer.invoke('dashboard:stop-all-services');
+        }
+
+        function createGroup() {
+            const { ipcRenderer } = require('electron');
+            
+            // Add visual feedback
+            const button = event.target.closest('button');
+            if (button) {
+                button.style.transform = 'scale(0.95)';
+                setTimeout(() => {
+                    button.style.transform = 'scale(1)';
+                }, 150);
+            }
+            
+            ipcRenderer.send('create-group');
+        }
+
+        function viewGroup(groupName) {
+            const { ipcRenderer } = require('electron');
+            
+            // Add visual feedback
+            const button = event.target.closest('button');
+            if (button) {
+                button.style.transform = 'scale(0.95)';
+                setTimeout(() => {
+                    button.style.transform = 'scale(1)';
+                }, 150);
+            }
+            
+            ipcRenderer.send('view-group', groupName);
+        }
+
+        function addService() {
+            const { ipcRenderer } = require('electron');
+            
+            // Add visual feedback
+            const button = event.target.closest('button');
+            if (button) {
+                button.style.transform = 'scale(0.95)';
+                setTimeout(() => {
+                    button.style.transform = 'scale(1)';
+                }, 150);
+            }
+            
+            ipcRenderer.send('add-folder');
+        }
+
+        function showError(message) {
+            console.error(message);
+            // Could show a toast notification here
+        }
+    </script>
+</body>
+</html> 

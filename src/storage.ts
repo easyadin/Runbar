@@ -110,7 +110,14 @@ export class Storage {
   async getServices(): Promise<Service[]> {
     try {
       const data = await fs.readJson(this.servicesFile);
-      return data.services || [];
+      // Handle both old format { version: '1.0', services: [] } and new format []
+      if (Array.isArray(data)) {
+        return data;
+      } else if (data && typeof data === 'object' && 'services' in data) {
+        return data.services || [];
+      } else {
+        return [];
+      }
     } catch (error) {
       console.error('Failed to read services:', error);
       return [];
@@ -139,7 +146,14 @@ export class Storage {
   async getGroups(): Promise<Group[]> {
     try {
       const data = await fs.readJson(this.groupsFile);
-      return data.groups || [];
+      // Handle both old format { version: '1.0', groups: [] } and new format []
+      if (Array.isArray(data)) {
+        return data;
+      } else if (data && typeof data === 'object' && 'groups' in data) {
+        return data.groups || [];
+      } else {
+        return [];
+      }
     } catch (error) {
       console.error('Failed to read groups:', error);
       return [];

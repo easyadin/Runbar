@@ -10,6 +10,29 @@ Avoid manually running `npm start`, `pnpm dev`, or opening terminal tabs. Runbar
 
 ---
 
+## 🚀 Quick Start
+
+1. **Install and Run**:
+   ```bash
+   git clone https://github.com/your-username/runbar.git
+   cd runbar
+   npm install
+   npm run dev
+   ```
+
+2. **Add Your First Service**:
+   - Right-click the tray icon
+   - Click "Add Folder to Scan..."
+   - Select a folder with your projects
+   - Choose which services to add
+
+3. **Start Managing**:
+   - Click on groups to start/stop all services
+   - Click on individual services for control
+   - View logs with "View Group Logs"
+
+---
+
 ## ✅ Core Features
 
 ### 1. Tray Menu UI
@@ -27,18 +50,22 @@ Avoid manually running `npm start`, `pnpm dev`, or opening terminal tabs. Runbar
 - Click to start/stop services
 - Group support for batch actions
 
-### 2. Service Discovery
-- Add folder → auto-scan recursively (intelligent boundary detection)
-- **Configurable file type detection:**
-  - `package.json` (Node.js/npm/yarn/pnpm)
-  - `Gemfile` (Ruby/Rails)
-  - `go.mod` (Go)
-  - `Cargo.toml` (Rust)
-  - `requirements.txt` (Python)
-  - `pom.xml` (Java/Maven)
-  - `build.gradle` (Java/Gradle)
-  - `docker-compose.yml` (Docker)
-  - And more configurable in settings
+### 2. Enhanced Service Discovery
+- **One-click folder scanning** with intelligent project detection
+- **15+ Project Types Supported:**
+  - **Web Frameworks**: Next.js, Nuxt.js, Vue.js, Angular, Svelte, Gatsby
+  - **Mobile**: React Native, Flutter
+  - **Backend**: Node.js, Python, Ruby, Go, Rust, Java, PHP, .NET
+  - **Infrastructure**: Docker, Shell scripts
+- **Smart Command Detection:**
+  - Auto-detects framework-specific start commands
+  - Reads package.json scripts and dependencies
+  - Provides sensible defaults for each project type
+  - Manual override available for custom commands
+- **Intelligent Naming:**
+  - Extracts project names from config files
+  - Fallback to directory names
+  - User customization during import
 - **Smart script detection** with manual override:
   - Auto-detects common scripts (`dev`, `start`, `rails server`, etc.)
   - Manual entry for custom commands when auto-detection fails
@@ -61,14 +88,34 @@ Avoid manually running `npm start`, `pnpm dev`, or opening terminal tabs. Runbar
 - **Group membership shown** in service list for clarity
 - Click group name to start/stop all in group
 
-### 5. Persistent Storage
+### 5. Real-time Monitoring & Logs
+- **Live Service Status**: Real-time status indicators with color coding
+- **Live Log Streaming**: View logs in beautiful terminal-style windows
+- **Port Conflict Detection**: Automatic detection and resolution of port conflicts
+- **Auto-restart on Crash**: Configurable auto-restart for failed services
+- **Status Polling**: Configurable polling intervals for service health checks
+
+### 6. Advanced Group Management
+- **Bulk Operations**: Start All, Stop All, Restart All for groups
+- **Group Management**: Rename, duplicate, and delete groups
+- **Service Management**: Add/remove services from groups
+- **Group Templates**: Quick group creation from templates (coming soon)
+
+### 7. Modern Settings & Configuration
+- **Beautiful Settings UI**: Modern dark theme with gradient accents
+- **Theme Customization**: Dark, Light, and Auto themes
+- **Discovery Configuration**: Customize project detection markers
+- **Performance Settings**: Configure log limits and polling intervals
+- **Data Management**: Export/import configurations, clear data
+
+### 8. Persistent Storage
 - Config stored in `~/.runbar/`
   - `services.json`
   - `groups.json`
   - `settings.json`
 - **Versioned config format** for future compatibility
-- **Basic validation** and backup before changes
-- **Simple structure** with room for future expansion
+- **Data migration** for seamless updates
+- **Backup and restore** functionality
 ```json
 {
   "version": "1.0",
@@ -202,10 +249,12 @@ Avoid manually running `npm start`, `pnpm dev`, or opening terminal tabs. Runbar
 ---
 
 ## 🧱 Tech Stack
-- Electron (macOS app shell + tray)
-- Node.js (filesystem scan, process control)
-- Optional: React (for popup UI)
-- JSON-based local storage in `~/.runbar/`
+- **Electron** - Cross-platform desktop app framework
+- **TypeScript** - Type-safe JavaScript development
+- **Node.js** - Backend services and process management
+- **Winston** - Structured logging
+- **fs-extra** - Enhanced file system operations
+- **JSON-based storage** in `~/.runbar/`
 
 ---
 
@@ -213,26 +262,60 @@ Avoid manually running `npm start`, `pnpm dev`, or opening terminal tabs. Runbar
 
 ```
 runbar/
-├── index.js            // Main Electron script
-├── scanner.js          // Service discovery logic
-├── processManager.js   // Start/stop logic
-├── trayMenu.js         // Builds dynamic menu
-├── storage/
-│   ├── services.json
-│   └── groups.json
-└── assets/
-    └── icon.png
+├── src/
+│   ├── index.ts              # Main entry point
+│   ├── processManager.ts     # Service process management
+│   ├── storage.ts           # Configuration persistence
+│   ├── scanner.ts           # Service discovery
+│   ├── trayMenu.ts          # Tray menu UI
+│   ├── types.ts             # TypeScript definitions
+│   └── serviceIgnore.ts     # Ignore patterns
+├── dist/                    # Compiled JavaScript
+├── assets/                  # App icons and resources
+├── tests/                   # Test files
+├── docs/                    # Documentation
+└── config/                  # Build configuration
 ```
 
 ---
 
-## ✅ MVP Checklist
+## ✅ Feature Checklist
 
-- [x] Tray menu with toggleable services
-- [x] Add folder → scan → import flow
-- [x] Group management and batch control
-- [x] JSON-based persistent config
-- [x] Graceful process management
+- [x] **Core Features**
+  - [x] Tray menu with toggleable services
+  - [x] Add folder → scan → import flow
+  - [x] Group management and batch control
+  - [x] JSON-based persistent config
+  - [x] Graceful process management
+
+- [x] **Enhanced Service Discovery**
+  - [x] 15+ project types supported
+  - [x] Smart command detection
+  - [x] Framework auto-detection
+  - [x] Intelligent naming
+
+- [x] **Real-time Monitoring**
+  - [x] Live service status indicators
+  - [x] Real-time log streaming
+  - [x] Port conflict detection
+  - [x] Auto-restart on crash
+
+- [x] **Advanced Group Management**
+  - [x] Bulk operations (start/stop/restart all)
+  - [x] Group management (rename/duplicate/delete)
+  - [x] Service management (add/remove from groups)
+
+- [x] **Modern Settings UI**
+  - [x] Beautiful dark theme interface
+  - [x] Theme customization
+  - [x] Configuration management
+  - [x] Export/import functionality
+
+- [x] **Production Ready**
+  - [x] TypeScript implementation
+  - [x] Error handling and validation
+  - [x] Data migration support
+  - [x] Continuous development setup
 
 ---
 

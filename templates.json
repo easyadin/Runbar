@@ -1,0 +1,138 @@
+{
+  "templates": {
+    "fullstack-node": {
+      "name": "Full Stack Node.js",
+      "description": "Complete Node.js stack with frontend, backend, and database",
+      "services": [
+        {
+          "name": "Database",
+          "command": "docker run --name postgres -e POSTGRES_PASSWORD=password -e POSTGRES_DB=app -p 5432:5432 -d postgres:13",
+          "projectType": "docker",
+          "autoStart": true,
+          "startupDelay": 5000
+        },
+        {
+          "name": "Backend API",
+          "command": "npm run dev",
+          "projectType": "nodejs",
+          "autoStart": true,
+          "dependencies": ["Database"],
+          "startupDelay": 3000
+        },
+        {
+          "name": "Frontend",
+          "command": "npm run dev",
+          "projectType": "nodejs",
+          "autoStart": true,
+          "dependencies": ["Backend API"],
+          "startupDelay": 2000
+        }
+      ]
+    },
+    "microservices": {
+      "name": "Microservices Stack",
+      "description": "Multiple microservices with API gateway",
+      "services": [
+        {
+          "name": "Database",
+          "command": "docker run --name redis -p 6379:6379 -d redis:alpine",
+          "projectType": "docker",
+          "autoStart": true,
+          "startupDelay": 3000
+        },
+        {
+          "name": "User Service",
+          "command": "npm run dev",
+          "projectType": "nodejs",
+          "autoStart": true,
+          "dependencies": ["Database"],
+          "startupDelay": 2000
+        },
+        {
+          "name": "Auth Service",
+          "command": "npm run dev",
+          "projectType": "nodejs",
+          "autoStart": true,
+          "dependencies": ["Database"],
+          "startupDelay": 2000
+        },
+        {
+          "name": "API Gateway",
+          "command": "npm run dev",
+          "projectType": "nodejs",
+          "autoStart": true,
+          "dependencies": ["User Service", "Auth Service"],
+          "startupDelay": 2000
+        }
+      ]
+    },
+    "react-native": {
+      "name": "React Native Development",
+      "description": "React Native app with backend and Metro bundler",
+      "services": [
+        {
+          "name": "Backend API",
+          "command": "npm run dev",
+          "projectType": "nodejs",
+          "autoStart": true,
+          "startupDelay": 3000
+        },
+        {
+          "name": "Metro Bundler",
+          "command": "npx react-native start",
+          "projectType": "react-native",
+          "autoStart": true,
+          "dependencies": ["Backend API"],
+          "startupDelay": 2000
+        }
+      ]
+    },
+    "python-django": {
+      "name": "Django Stack",
+      "description": "Django backend with database",
+      "services": [
+        {
+          "name": "PostgreSQL",
+          "command": "docker run --name postgres -e POSTGRES_PASSWORD=password -e POSTGRES_DB=django -p 5432:5432 -d postgres:13",
+          "projectType": "docker",
+          "autoStart": true,
+          "startupDelay": 5000
+        },
+        {
+          "name": "Django Server",
+          "command": "python manage.py runserver",
+          "projectType": "python",
+          "autoStart": true,
+          "dependencies": ["PostgreSQL"],
+          "startupDelay": 3000
+        }
+      ]
+    },
+    "vue-nuxt": {
+      "name": "Vue.js + Nuxt",
+      "description": "Vue.js frontend with Nuxt.js",
+      "services": [
+        {
+          "name": "Nuxt Dev Server",
+          "command": "npm run dev",
+          "projectType": "nuxt",
+          "autoStart": true,
+          "startupDelay": 2000
+        }
+      ]
+    },
+    "nextjs": {
+      "name": "Next.js App",
+      "description": "Next.js full-stack application",
+      "services": [
+        {
+          "name": "Next.js Dev Server",
+          "command": "npm run dev",
+          "projectType": "nextjs",
+          "autoStart": true,
+          "startupDelay": 2000
+        }
+      ]
+    }
+  }
+} 
